@@ -1,0 +1,528 @@
+{
+  "name": "AI Expense Tracker",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1424,
+        -640
+      ],
+      "id": "38aa7882-ae44-4392-b463-83bbba08312c",
+      "name": "Telegram Trigger",
+      "webhookId": "a413a94f-4515-4b72-a94a-7d5488cbfb7d",
+      "credentials": {
+        "telegramApi": {
+          "id": "N8kQHHhxg2kD6xci",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"openai/gpt-oss-20b\",\n  \"temperature\": 0.1,\n  \"response_format\": { \"type\": \"json_object\" },\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a data parser. Extract structured financial data from the user input. You must output a JSON object containing exactly these keys: 'amount' (number), 'category' (string), and 'vendor' (string). Use a general category name (like groceries, dining, utilities, entertainment, transport). If a value is missing, use null.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"{{ $json.message.text }}\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -1232,
+        -496
+      ],
+      "id": "533c7650-bab4-4211-9fba-994da07d14a2",
+      "name": "HTTP Request",
+      "retryOnFail": true,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "yqZgLvQl3SrYU5oF",
+          "name": "Bearer Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f862d63d-89bd-4106-8ec1-02f25078bd42",
+              "name": "=parsedData",
+              "value": "={{ JSON.parse($json.choices[0].message.content) }}",
+              "type": "string"
+            },
+            {
+              "id": "b7014283-b498-40c7-be35-1b4bb11cbe80",
+              "name": "",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1024,
+        -496
+      ],
+      "id": "ef44cecf-3252-4c16-bcc6-f2a6f28f7e35",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1-gDdnSWLk3a06uLCDgWZLlDnrPxxAd021k9u0mamMBM",
+          "mode": "list",
+          "cachedResultName": "ExpenseTracker",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1-gDdnSWLk3a06uLCDgWZLlDnrPxxAd021k9u0mamMBM/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1-gDdnSWLk3a06uLCDgWZLlDnrPxxAd021k9u0mamMBM/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Date": "={{ $now.format('yyyy-MM-dd HH:mm') }}",
+            "Vendor": "={{ JSON.parse($json.parsedData).vendor }}",
+            "Amount": "={{ JSON.parse($json.parsedData).amount }}",
+            "Category": "={{ JSON.parse($json.parsedData).category }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Amount",
+              "displayName": "Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Category",
+              "displayName": "Category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Vendor",
+              "displayName": "Vendor",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -560,
+        -640
+      ],
+      "id": "5734e356-67b2-4773-b112-cd346c911442",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "qrIfh1BowJZpxl4T",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"Telegram Trigger\"].json.message.chat.id }}",
+        "text": "=✅ *Expense Successfully Logged!* --------------------------------- 💰 *Amount:* {{ JSON.parse($node[\"Edit Fields\"].json.parsedData).amount }} 🏷️ *Category:* {{ JSON.parse($node[\"Edit Fields\"].json.parsedData).category }} 🏢 *Vendor:* {{ JSON.parse($node[\"Edit Fields\"].json.parsedData).vendor }} 📅 *Timestamp:* {{ $now.format('yyyy-MM-dd HH:mm') }}  _Your ledger spreadsheet has been updated._",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -144,
+        -400
+      ],
+      "id": "d6bd431b-3021-46f5-a47b-33b1477f4e99",
+      "name": "Send a text message",
+      "webhookId": "34d86bdc-25a1-47ea-8b95-75018c641599",
+      "credentials": {
+        "telegramApi": {
+          "id": "N8kQHHhxg2kD6xci",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "814fa93e-0130-4ed0-a796-ba47db84bda5",
+              "leftValue": "={{ JSON.parse($json.parsedData).amount }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -816,
+        -624
+      ],
+      "id": "5cec424f-d80b-4097-a9ed-4af664132c1c",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"Telegram Trigger\"].json.message.chat.id }}",
+        "text": "⚠️ *Logging Error* ------------------ I couldn't find a valid amount or transaction details in your message.   Please make sure to include a clear number and item description (e.g., \"350 for coffee at Starbucks\").",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -592,
+        -416
+      ],
+      "id": "88e6fa4b-84c6-46b5-8e73-b54844f2dab6",
+      "name": "Send a text message1",
+      "webhookId": "f2216683-f2e7-4beb-b82d-9a97a3ab652d",
+      "credentials": {
+        "telegramApi": {
+          "id": "N8kQHHhxg2kD6xci",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "d2107e92-6df1-4596-9ac0-e9ebe91fb464",
+              "leftValue": "={{ JSON.parse($node[\"Edit Fields\"].json.parsedData).amount }}",
+              "rightValue": 6000,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -352,
+        -640
+      ],
+      "id": "3e577eda-69ad-4d4d-81a5-2a85e665fa8e",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"Telegram Trigger\"].json.message.chat.id }}",
+        "text": "=🚨 *BUDGET ALERT WARNING* 🚨\n=======================\n⚠️ A high-value expense has been detected and logged!\n\n💰 *Amount:* {{ $json.Amount }}\n🏷️ *Category:* {{ $json.Category }}\n🏢 *Vendor:* {{ $json.Vendor }}\n📅 *Timestamp:* {{ $now.format('yyyy-MM-dd HH:mm') }}\n\nThis individual transaction exceeds your single-item budget threshold. Please review your balance sheet dashboard.",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -144,
+        -656
+      ],
+      "id": "ef3c1e3e-676e-4cbd-a4e8-07c4a8ac2d6e",
+      "name": "Send a text message2",
+      "webhookId": "c4193740-e734-4edf-ab6b-3d7d4ae042ce",
+      "retryOnFail": true,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "telegramApi": {
+          "id": "N8kQHHhxg2kD6xci",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtHour": 5
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -1632,
+        -832
+      ],
+      "id": "afa1452f-4780-4e8c-899a-da2ac108076e",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1-gDdnSWLk3a06uLCDgWZLlDnrPxxAd021k9u0mamMBM",
+          "mode": "list",
+          "cachedResultName": "ExpenseTracker",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1-gDdnSWLk3a06uLCDgWZLlDnrPxxAd021k9u0mamMBM/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1-gDdnSWLk3a06uLCDgWZLlDnrPxxAd021k9u0mamMBM/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -1424,
+        -832
+      ],
+      "id": "78d599ca-a79b-402f-bfd3-35c59d594010",
+      "name": "Get row(s) in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "qrIfh1BowJZpxl4T",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Get all rows arriving from the Google Sheet node\nconst rows = $input.all();\n\nlet totalSpending = 0;\nlet categoryTotals = {};\n\n// 2. Loop through every row and calculate totals\nfor (const row of rows) {\n  // Grab the amount and convert it safely to a number\n  const amount = parseFloat(row.json[\"Amount\"]) || 0;\n  const category = row.json[\"Category\"] || \"unknown\";\n\n  // Add to global total\n  totalSpending += amount;\n\n  // Add to specific category totals\n  if (!categoryTotals[category]) {\n    categoryTotals[category] = 0;\n  }\n  categoryTotals[category] += amount;\n}\n\n// 3. Format the category breakdown into clean text lines\nlet breakdownText = \"\";\nfor (const [cat, amt] of Object.entries(categoryTotals)) {\n  breakdownText += `• ${cat.toUpperCase()}: ${amt.toFixed(2)} \\n`;\n}\n\n// 4. Output the calculations to the next node\nreturn [{\n  json: {\n    total: totalSpending.toFixed(2),\n    breakdown: breakdownText\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1216,
+        -832
+      ],
+      "id": "96099ebb-af12-4704-a6ed-babeac65bef8",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "chatId": "5985616682",
+        "text": "=📊 *WEEKLY FINANCIAL WRAP-UP* 📊 =========================== 🗓️ Here is your automated spending summary for the week:  💰 *Total Spending:* {{ $json.total }} rupees  🗂️ *Breakdown By Category:* {{ $json.breakdown }} --------------------------- _Your automated ledger summary is complete._",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -1008,
+        -832
+      ],
+      "id": "75f95295-f60c-46b6-8529-0ca32795b554",
+      "name": "Send a text message3",
+      "webhookId": "18922b5a-3f0c-4e9e-855e-d0a0cadde899",
+      "credentials": {
+        "telegramApi": {
+          "id": "N8kQHHhxg2kD6xci",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a text message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Send a text message2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Send a text message3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "211dfefa-fbac-40e1-8458-f6e0146ef6df",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "76471e004d558461c017fb5affe8f59a9d6acb0555c50a5ba7e7bddc6b386407"
+  },
+  "id": "YHKHaX1m9tAwVecQ",
+  "tags": []
+}
