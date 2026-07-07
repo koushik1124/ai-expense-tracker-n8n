@@ -1,4 +1,4 @@
-?# Agentic AI Personal Expense Ledger & Analytics Pipeline
+## Agentic AI Personal Expense Ledger & Analytics Pipeline
 
 A self-hosted automation system built on n8n, Groq LLM models, and the Telegram Bot API. It converts free-text expense messages into structured ledger entries in Google Sheets, with real-time budget alerts and a weekly automated spending report.
 
